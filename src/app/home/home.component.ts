@@ -18,7 +18,23 @@ export class HomeComponent implements OnInit {
 
   ngOnInit() {
     this.fs = this.electronService.remote.require('fs');
-    // this.robot = this.electronService.remote.require('robotjs');
+    this.robot = this.electronService.remote.require('robotjs');
+    /*
+    If this erros out. Steps:
+    -> npm i -D electron-rebuild
+    -> ./node_modules/.bin/electron-rebuild
+
+    // You can try:
+
+      -> npx electron-rebuild -f -t prod,optional,dev -w robotjs
+      -> npx electron-rebuild -f -m node_modules/robotjs
+
+    // Other things that can work:
+      -> npm i robotjs
+      -> npm i -D electron-rebuild
+      -> npm install -g node-gyp
+      -> npx electron-rebuild -f -t prod,optional,dev -w robotjs
+    */
   }
 
 }
