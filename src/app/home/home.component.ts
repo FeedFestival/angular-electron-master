@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ElectronService } from '../core/services';
+import * as Tween from '@tweenjs/tween.js';
 
 @Component({
   selector: 'app-home',
@@ -11,6 +12,7 @@ export class HomeComponent implements OnInit {
 
   fs: any;
   robot: any;
+  tNamespace: any;
 
   constructor(
     private router: Router,
@@ -35,6 +37,8 @@ export class HomeComponent implements OnInit {
       -> npm install -g node-gyp
       -> npx electron-rebuild -f -t prod,optional,dev -w robotjs
     */
+    const tween = (Tween as any);
+    this.tNamespace = tween.default;
   }
 
 }
