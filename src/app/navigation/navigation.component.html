@@ -1,0 +1,14 @@
+<div class="row m-0" style="background: #424242;">
+
+    <div class="col-12">
+
+    </div>
+
+    <div class="col-12">
+        <button mat-button *ngFor="let menu of menuItems; index as i;"
+            (click)="navigate(menu.url)">
+            {{ menu.label }}
+        </button>
+    </div>
+
+</div>

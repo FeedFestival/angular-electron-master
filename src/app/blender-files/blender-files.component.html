@@ -1,0 +1,111 @@
+<div class="row mb-3">
+
+    <div class="col-12">
+
+        <mat-card>
+            <mat-card-header>
+                <mat-card-title>Blender Files</mat-card-title>
+                <mat-card-subtitle>All Blender Files in my Computer</mat-card-subtitle>
+            </mat-card-header>
+
+            <mat-card-content>
+
+                <div class="row">
+
+                    <div class="col-12">
+
+                        <button mat-raised-button color="primary" [disabled]="true"
+                            (click)="recheck()">
+                            Recheck
+                        </button>
+
+                        <button mat-raised-button color="primary" class="ml-3" (click)="load()">
+                            Load
+                        </button>
+                    </div>
+
+                    <div class="col-12 p-0 mt-3">
+
+                        <p-table *ngIf="files" #tableRef [value]="files" [columns]="cols"
+                            [paginator]="true" [showJumpToPageDropdown]="true" [showPageLinks]="true"
+                            [rows]="10" [resizableColumns]="true"
+                            [globalFilterFields]="['name','filename','birth']">
+
+                            <ng-template pTemplate="caption">
+                                <div class="p-d-flex">
+                                    <button pButton label="Clear"
+                                        class="p-button-outlined"
+                                        icon="pi pi-filter-slash"
+                                        (click)="clear(tableRef)"></button>
+                                    <span class="p-input-icon-left float-right p-ml-auto">
+                                        <i class="pi pi-search"></i>
+                                        <input pInputText type="text"
+                                            (input)="tableRef.filterGlobal($event.target.value, 'contains')"
+                                            placeholder="Search keyword"
+                                            />
+                                    </span>
+                                </div>
+                            </ng-template>
+
+                            <ng-template pTemplate="header">
+                                <tr>
+                                    <th *ngFor="let col of cols;"
+                                        pResizableColumn [ngStyle]="col.style"
+                                        [pSortableColumn]="col.sortField ? col.sortField : col.field">
+
+                                        <div class="float-left">
+                                            {{col.header}}
+                                        </div>
+                                        <p-sortIcon *ngIf="!col.noScroll" class="float-left"
+                                            [field]="col.sortField ? col.sortField : col.field">
+                                        </p-sortIcon>
+
+                                        <p-columnFilter *ngIf="col.filterType === FILTER_TYPE.TEXT"
+                                            class="float-right" type="text"
+                                            [field]="col.field" display="menu"></p-columnFilter>
+
+                                        <p-columnFilter *ngIf="col.filterType === FILTER_TYPE.BOOL"
+                                            class="float-right" type="boolean" [field]="col.field">
+                                            Has Pics
+                                        </p-columnFilter>
+                                    </th>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="body" let-file>
+                                <tr>
+                                    <td *ngFor="let col of cols;" [ngClass]="col.cClass">
+                                        <span *ngIf="col.type === 'text'">
+                                            {{file[col.field]}}
+                                        </span>
+
+                                        <div *ngIf="col.type === 'name'">
+                                            <button mat-button (click)="openFile(file)">
+                                                <span class="pr-3">🎁</span> <span>{{file[col.field]}}</span>
+                                            </button>
+                                        </div>
+
+                                        <div *ngIf="col.type === 'fileLocation'">
+                                            <div class="float-left">
+                                                <button mat-button class="" (click)="openFileLocation(file)">
+                                                    <span class="pr-3">📁</span> <span>{{file[col.field]}}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div *ngIf="col.type === 'pictures'" [disabled]="file.noPic">
+                                            <button mat-raised-button color="primary"
+                                                [disabled]="file.hasPic === false" (click)="openPic(file)">
+                                                🖥
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-template>
+                        </p-table>
+                    </div>
+                </div>
+
+            </mat-card-content>
+        </mat-card>
+    </div>
+</div>

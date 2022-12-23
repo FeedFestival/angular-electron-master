@@ -69,7 +69,7 @@
     "core-js": "3.6.5",
     "cross-env": "7.0.2",
     "devtron": "1.4.0",
-    "electron": "8.2.5",
+    "electron": "~8.2.5",
     "electron-builder": "22.6.0",
     "electron-rebuild": "1.11.0",
     "electron-reload": "1.5.0",
@@ -97,5 +97,16 @@
   },
   "engines": {
     "node": ">=10.13.0"
+  },
+  "dependencies": {
+    "@angular/animations": "9.0.0",
+    "@angular/cdk": "9.0.0",
+    "@angular/material": "9.0.0",
+    "bootstrap": "4.6.0",
+    "fs-extra": "9.1.0",
+    "open": "8.0.5",
+    "primeicons": "4.1.0",
+    "primeng": "11.3.2",
+    "tslint": "6.1.3"
   }
 }
