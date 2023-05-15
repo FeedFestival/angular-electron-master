@@ -1,0 +1,9 @@
+.menu-item {
+    color: orange;
+
+    &.active {
+        background: white;
+        color: black;
+        border-radius: 0;
+    }
+}

@@ -1,0 +1,13 @@
+<div class="row m-0" style="background: #424242;">
+    <div class="col-12">
+
+    </div>
+    <div class="col-12">
+        <button mat-button class="menu-item"
+            [ngClass]="{ 'active': menu.active === true }"
+            *ngFor="let menu of menuItems; index as i;"
+            (click)="navigate(menu)">
+            {{ menu.label }}
+        </button>
+    </div>
+</div>
