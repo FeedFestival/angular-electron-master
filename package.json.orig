@@ -108,14 +108,5 @@
     "node": ">=10.13.0"
   },
   "dependencies": {
-    "xlsx": "0.17.0"
-    "@angular/cdk": "9.0.0",
-    "@angular/material": "9.0.0",
-    "bootstrap": "4.6.0",
-    "fs-extra": "9.1.0",
-    "open": "8.0.5",
-    "primeicons": "4.1.0",
-    "primeng": "11.3.2",
-    "tslint": "6.1.3"
   }
 }
