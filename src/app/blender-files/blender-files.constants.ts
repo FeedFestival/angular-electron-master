@@ -48,12 +48,9 @@ export const blenderFilesCols = [
 export const BLENDER_DIRS = {
     // CHECK: 'E:/_New_Working Ground/1_LevelDesign/WildLife',
     CHECK: [
-        "E:/__WorkingGround",
+        // "E:/__WorkingGround",
 
-        // "E:/_memories",
         // "E:/_New_Working Ground",
-
-        // "E:/_Old_Working Ground",
 
         // ------  1  ------------------------------------------
         // "E:/_assets",
@@ -62,7 +59,7 @@ export const BLENDER_DIRS = {
         // "E:/_kits",
         // "E:/Old_Desktop",
 
-        // ------  1  ------------------------------------------
+        // ------  2  ------------------------------------------ NOTHING COMES UP
         // 'E:/_made_Games',
         // 'E:/_ProiecteExterne',
         // 'E:/_publish GAMES',
@@ -71,6 +68,9 @@ export const BLENDER_DIRS = {
         // 'E:/League Of Legends',
         // 'E:/MakeHuman',
         // 'E:/Program Files'
+
+        // ------  1  ------------------------------------------
+        'F:/'
     ],
     SAVE: "E:/_assets",
     SAVE_FILE: "___assets_JSON.json",
