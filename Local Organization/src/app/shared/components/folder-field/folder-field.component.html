@@ -1,0 +1,33 @@
+<p-menu #menu [model]="items" [popup]="true" />
+
+<label for="inputField">Assets Folder Path</label>
+<p-inputGroup>
+    <button
+        type="button"
+        pButton
+        size="small"
+        severity="secondary"
+        icon="pi pi-folder-open"
+        (click)="appService.openFolderRelativeLocation(control.value)"
+    ></button>
+    <input
+        pInputText
+        [formControl]="control"
+        inputId="inputField"
+    />
+    <p-button
+        type="button"
+        [outlined]="true"
+        size="small"
+        severity="secondary"
+        icon="pi pi-ellipsis-v"
+        (onClick)="menu.toggle($event)"
+    ></p-button>
+    <button
+        type="button"
+        pButton
+        size="small"
+        icon="pi pi-folder"
+        (click)="openFileDialog()"
+    ></button>
+</p-inputGroup>

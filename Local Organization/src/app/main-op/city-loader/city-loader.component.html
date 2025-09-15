@@ -1,0 +1,167 @@
+<div class="grid mb-3">
+    <div class="col-12">
+        <div class="grid">
+            <div class="col-2">Latitude:</div>
+            <div class="col-4">
+                <input
+                    pInputText
+                    class="w-100"
+                    style="color: black"
+                    [(ngModel)]="latitude"
+                    placeholder="Latitude"
+                />
+            </div>
+            <div class="col-2">Longitude:</div>
+            <div class="col-4">
+                <input
+                    pInputText
+                    class="w-100"
+                    style="color: black"
+                    [(ngModel)]="longitude"
+                    placeholder="Longitude"
+                />
+            </div>
+        </div>
+
+        <div
+            class="grid"
+            *ngIf="isSqlGenerated"
+        >
+            <div class="col-12">
+                <textarea
+                    class="w-100"
+                    pInputText
+                    style="color: black; font-size: 8px; min-height: 20vh"
+                    [(ngModel)]="tableSql"
+                ></textarea>
+            </div>
+        </div>
+
+        <div
+            class="grid"
+            *ngIf="isSqlGenerated"
+        >
+            <div class="col-6">
+                <textarea
+                    class="w-100"
+                    pInputText
+                    style="color: black; font-size: 8px; min-height: 25vh"
+                    [(ngModel)]="getCountrySql"
+                ></textarea>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="col-2">
+                <button
+                    type="button"
+                    pButton
+                    size="small"
+                    (click)="generateSql()"
+                >
+                    Generate SQL
+                </button>
+            </div>
+
+            <div class="col-10">
+                <div class="grid">
+                    <div
+                        class="col-6"
+                        *ngIf="isSqlGenerated"
+                    >
+                        <textarea
+                            class="w-100"
+                            pInputText
+                            style="
+                                color: black;
+                                font-size: 8px;
+                                min-height: 25vh;
+                            "
+                            [(ngModel)]="countrySqlText"
+                        ></textarea>
+                    </div>
+                    <div
+                        class="col-6"
+                        *ngIf="isSqlGenerated"
+                    >
+                        <textarea
+                            class="w-100"
+                            pInputText
+                            style="
+                                color: black;
+                                font-size: 8px;
+                                min-height: 25vh;
+                            "
+                            [(ngModel)]="citySqlText"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="grid">
+                    <div class="col-12">Fake Names</div>
+
+                    <div
+                        class="col-6"
+                        *ngIf="isSqlGenerated"
+                    >
+                        <textarea
+                            class="w-100"
+                            pInputText
+                            style="
+                                color: black;
+                                font-size: 8px;
+                                min-height: 25vh;
+                            "
+                            [(ngModel)]="fakeNamesSql"
+                        ></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="grid">
+            <div class="col-2">
+                <button
+                    type="button"
+                    pButton
+                    size="small"
+                    (click)="loadCountriesAndCities()"
+                >
+                    Load Data
+                </button>
+            </div>
+
+            <div class="col-2">
+                <button
+                    type="button"
+                    pButton
+                    size="small"
+                    (click)="loadFakeUsernames()"
+                >
+                    Load Fake Usernames
+                </button>
+            </div>
+        </div>
+        <div class="grid">
+            <p-accordion [activeIndex]="0">
+                <p-accordionTab
+                    [header]="country.country"
+                    *ngFor="let country of countries; index as i"
+                >
+                    <span class="float-right">
+                        {{ country.cities?.length }}
+                    </span>
+
+                    <div
+                        class="col-12 pb-2"
+                        *ngFor="let city of country.cities"
+                    >
+                        {{ city.city }}
+                    </div>
+                </p-accordionTab>
+            </p-accordion>
+        </div>
+    </div>
+</div>

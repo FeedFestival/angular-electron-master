@@ -1,0 +1,19 @@
+<p-fieldset
+    [legend]="label"
+    [toggleable]="true"
+>
+    <ng-template pTemplate="header">
+        <p-badge
+            [value]="control.value?.length"
+            severity="secondary"
+            styleClass="ml-3"
+        />
+    </ng-template>
+
+    <p-listbox
+        [filter]="true"
+        [options]="options"
+        [formControl]="control"
+        [multiple]="true"
+    ></p-listbox>
+</p-fieldset>
