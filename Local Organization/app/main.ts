@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { app, BrowserWindow, dialog, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, protocol, screen } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -68,7 +68,14 @@ try {
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
     // Added 400 ms to fix the black background issue while using transparent window. More detais at https://github.com/electron/electron/issues/15947
-    app.on('ready', () => setTimeout(createWindow, 400));
+    app.on('ready', () => {
+        protocol.registerFileProtocol('safe-file', (request, callback) => {
+            const filePath = request.url.replace('safe-file://', '');
+            callback({ path: filePath });
+        });
+
+        setTimeout(createWindow, 400);
+    });
 
     // Quit when all windows are closed.
     app.on('window-all-closed', () => {
@@ -100,68 +107,3 @@ ipcMain.handle('open-dialog', async (_event, options: Electron.OpenDialogOptions
     return result;
 });
 
-// IPC handler for nut-js
-// ipcMain.handle('find-image', async (event, imagePath) => {
-//     try {
-//         const region = await nutscreen.find(imagePath);
-//         return region;
-//     } catch (err: any) {
-//         return { error: err.message };
-//     }
-// });
-
-// ipcMain.handle('press-key', async (event, key: string) => {
-//     try {
-//         await keyboard.type(key);
-//         return { success: true };
-//     } catch (err: any) {
-//         return { error: err.message };
-//     }
-// });
-
-// Mouse
-// ipcMain.handle('mouse-move', async (event, point: { x: number; y: number }) => {
-//     try {
-//         await mouse.move(new Point(point.x, point.y));
-//         return { success: true };
-//     } catch (err) {
-//         return { error: (err as Error).message };
-//     }
-// });
-
-// ipcMain.handle('mouse-click', async (event, button: 'left' | 'right') => {
-//     try {
-//         await mouse.click(button === 'left' ? Button.LEFT : Button.RIGHT);
-//         return { success: true };
-//     } catch (err) {
-//         return { error: (err as Error).message };
-//     }
-// });
-
-// // Keyboard
-// ipcMain.handle('keyboard-type', async (event, text: string) => {
-//     try {
-//         await keyboard.type(text);
-//         return { success: true };
-//     } catch (err) {
-//         return { error: (err as Error).message };
-//     }
-// });
-
-// ipcMain.handle('keyboard-press', async (event, key: Key) => {
-//     try {
-//         await keyboard.pressKey(key);
-//         return { success: true };
-//     } catch (err) {
-//         return { error: (err as Error).message };
-//     }
-// });
-
-// ipcMain.handle('keyboard-release', async (event, key: Key) => {
-//     try {
-//         await keyboard.releaseKey(key);
-//         return { success: true };
-//     } catch (err) {
-//         return { error: (err as Error).message };
-//     }
-// });

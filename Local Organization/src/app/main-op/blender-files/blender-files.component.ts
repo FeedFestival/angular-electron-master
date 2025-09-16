@@ -1,4 +1,4 @@
-import { NgClass, NgForOf, NgIf, NgStyle } from '@angular/common';
+import { NgClass, NgFor, NgForOf, NgIf, NgStyle } from '@angular/common';
 import { Component, OnDestroy, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ElectronService as NgxElectronService } from 'ngx-electronyzer';
@@ -7,17 +7,18 @@ import { DropdownModule } from 'primeng/dropdown';
 import { DialogService } from 'primeng/dynamicdialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { Observable, Subject, from, of } from 'rxjs';
-import { filter, finalize, switchMap, tap } from 'rxjs/operators';
+import { TooltipModule } from 'primeng/tooltip';
+import { Subject, from, merge, of } from 'rxjs';
+import { distinct, finalize, map, switchMap, takeUntil } from 'rxjs/operators';
 import { AppService } from '../../app.service';
 import { ElectronService } from '../../core/services';
 import { SeeImageComponent } from '../../shared/components/see-image/see-image.component';
 import { LabelValue } from '../../shared/model';
-import { defaultIFile, DriveFile, IFile } from '../../shared/model/DriveFile';
-import { FILTER_TYPE, blenderFilesCols } from './blender-files.constants';
+import { DriveFile, IFile, ImagePath, RawFile, defaultIFile } from '../../shared/model/DriveFile';
+import { FILTER_TYPE, IMAGE_EXTS, blenderFilesCols } from './blender-files.constants';
 import { BLENDER_FILES_DRIVE_FILE, BlenderFilesService } from './blender-files.service';
-import { BlenderFinderAsync } from './blender-finder-async';
 import { BlenderFinder } from './blender-finder';
+import { BlenderFinderAsync } from './blender-finder-async';
 
 const FORM_VALUE_KEY = 'blender-files-form-values';
 
@@ -26,6 +27,7 @@ const FORM_VALUE_KEY = 'blender-files-form-values';
     standalone: true,
     imports: [
         NgIf,
+        NgFor,
         NgForOf,
         NgStyle,
         NgClass,
@@ -34,6 +36,7 @@ const FORM_VALUE_KEY = 'blender-files-form-values';
         InputTextModule,
         DropdownModule,
         TableModule,
+        TooltipModule,
     ],
     templateUrl: './blender-files.component.html',
     styleUrls: ['./blender-files.component.scss'],
@@ -71,11 +74,9 @@ export class BlenderFilesComponent implements OnDestroy {
             .getDriveList()
             .subscribe(result => (this.drives = result.map(it => ({ label: it, value: it }))));
 
-        const blenderFilesFormValues = localStorage.getItem(FORM_VALUE_KEY);
-        if (blenderFilesFormValues) {
-            const formValues = JSON.parse(blenderFilesFormValues);
-            this.fg.patchValue(formValues);
-        }
+        this.fg.valueChanges
+            .pipe(distinct())
+            .subscribe(value => localStorage.setItem(FORM_VALUE_KEY, JSON.stringify(value, null, 2)));
 
         this.fg.controls.drive.valueChanges
             .pipe(
@@ -90,12 +91,14 @@ export class BlenderFilesComponent implements OnDestroy {
             )
             .subscribe(driveFile => {
                 console.log('driveFile: ', driveFile);
-                this.files = driveFile.files.map((f, i) => {
-                    const file = BlenderFinderAsync.toFile(f, i);
-                    if (!file) return { ...f, ...defaultIFile, name: `DELETED ? ${f.name}` };
-                    return file;
-                });
+                this.onTableDataLoaded(driveFile.files);
             });
+
+        const blenderFilesFormValues = localStorage.getItem(FORM_VALUE_KEY);
+        if (blenderFilesFormValues) {
+            const formValues = JSON.parse(blenderFilesFormValues);
+            this.fg.patchValue(formValues);
+        }
     }
 
     selectDirectory(): void {
@@ -124,38 +127,29 @@ export class BlenderFilesComponent implements OnDestroy {
         // console.log("$event: ", $event);
     }
 
-    openFileLocation(file) {
-        this.highlightRecent(file);
-
-        // this.openLib(file.fileLocation);
-
-        // TODO: replace above with below
-
-        // const mainPath = "D:\\Downloads\\";
-        // const path =
-        //     mainPath + "Pics 10_2_2016\\storm_chaser_by_kypcaht-d5flwfq.jpg";
-        // this.ngxElectronService.shell.openItem(path);
+    copyLocationToClipboard(file: IFile): void {
+        navigator.clipboard.writeText(file.fileLocation);
     }
 
-    openFile(file) {
+    openFileLocation(file: IFile) {
         this.highlightRecent(file);
-
-        // this.openLib(file.filename);
-
-        // TODO: replace above with below
-
-        // const mainPath = "D:\\Downloads\\";
-        // const path =
-        //     mainPath + "Pics 10_2_2016\\storm_chaser_by_kypcaht-d5flwfq.jpg";
-        // this.ngxElectronService.shell.openItem(path);
+        this.ngxElectron.shell.openPath(file.fileLocation);
     }
 
-    openPic(file) {
+    openFile(file: IFile) {
+        this.highlightRecent(file);
+        this.ngxElectron.shell.openPath(file.filepath);
+    }
+
+    openPic(file: IFile, imageId: string) {
+        const data: { images: ImagePath[]; id: string } = {
+            images: file.images,
+            id: imageId,
+        };
         this.dialog.open(SeeImageComponent, {
             width: '100vw',
-            // maxWidth: "100vw",
             height: '100vh',
-            data: { file: file },
+            data,
         });
     }
 
@@ -170,12 +164,7 @@ export class BlenderFilesComponent implements OnDestroy {
         this.blenderFinder
             .findInDrive(`${rawValue.drive}/`)
             .pipe(finalize(() => this.onSearchFinished()))
-            .subscribe(
-                files =>
-                    (this.files = files.map((f, i) => {
-                        return BlenderFinderAsync.toFile(f, i);
-                    })),
-            );
+            .subscribe(files => this.onTableDataLoaded(files));
 
         //     .pipe(
         //         filter(file => !!file),
@@ -199,22 +188,49 @@ export class BlenderFilesComponent implements OnDestroy {
         this.saveDriveFile(driveFile);
     }
 
-    readHasPic(picUrl, index: number): Observable<{ hasPic: boolean; index: number; err?: any }> {
-        return from(
-            new Promise<{ hasPic: boolean; index: number; err?: any }>((resolve, reject) => {
-                const formatedPicUrl = picUrl.replace('file://', '');
-                const f_ok = ElectronService.FS.constants.F_OK;
-                return ElectronService.FS.access(formatedPicUrl, f_ok, err => {
-                    const hasPic = err ? false : true;
-                    // console.log("[" + formatedPicUrl + "] hasPic: ", false);
-                    if (hasPic) {
-                        resolve({ hasPic, index });
-                        return of({ hasPic, index });
-                    }
-                    reject({ err, index });
+    private onTableDataLoaded(files?: RawFile[]): void {
+        if (files) {
+            this.files = files.map((f, i) => {
+                const file = BlenderFinderAsync.toFile(f, i);
+                if (!file) return { ...f, ...defaultIFile, name: `DELETED ? ${f.name}` };
+                return file;
+            });
+        }
+
+        if (this.files) {
+            const observables = this.files.map(file =>
+                of(file).pipe(
+                    switchMap(file =>
+                        from(BlenderFinderAsync.readDirectory(file.fileLocation)).pipe(
+                            map(filenamesInDir => {
+                                const images = filenamesInDir
+                                    .filter(filename =>
+                                        IMAGE_EXTS.some(ext => filename.toLowerCase().endsWith(ext)),
+                                    )
+                                    .map(filename => ({
+                                        id: crypto.randomUUID(),
+                                        path: `safe-file://${(file.fileLocation + filename).replace(/\\/g, '/')}`,
+                                    }));
+                                return {
+                                    ...file,
+                                    hasPic: !!images && images.length > 0,
+                                    images,
+                                };
+                            }),
+                        ),
+                    ),
+                    takeUntil(this.destroyed$),
+                ),
+            );
+
+            merge(...observables)
+                .pipe(takeUntil(this.destroyed$))
+                .subscribe(completeFile => {
+                    const index = this.files.findIndex(f => f.id === completeFile.id);
+                    this.files[index].images = completeFile.images;
+                    this.files[index].hasPic = completeFile.hasPic;
                 });
-            }),
-        );
+        }
     }
 
     private highlightRecent(file: IFile) {

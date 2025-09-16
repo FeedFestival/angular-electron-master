@@ -53,6 +53,7 @@
 <div class="p-0 mt-3">
     <p-table
         #tableRef
+        styleClass="p-datatable-sm"
         [value]="files"
         [columns]="cols"
         [paginator]="true"
@@ -144,40 +145,61 @@
                     </span>
 
                     <div *ngIf="col.type === 'name'">
-                        <p-button
-                            type="button"
-                            size="small"
-                            [outlined]="true"
-                            (click)="openFile(file)"
-                        >
-                            <span class="pr-3">🎁</span>
+                        <div class="flex align-items-center gap-3">
                             <span>{{ file[col.field] }}</span>
-                        </p-button>
+
+                            <p-button
+                                icon="pi pi-file"
+                                size="small"
+                                [outlined]="true"
+                                (onClick)="openFile(file)"
+                            />
+                        </div>
                     </div>
 
                     <div *ngIf="col.type === 'fileLocation'">
-                        <div class="float-left">
+                        <div class="flex align-items-center gap-3">
+                            <span
+                                class="dotdot"
+                                style="max-width: 512px"
+                                [pTooltip]="file.fileLocation"
+                                tooltipPosition="top"
+                                tooltipStyleClass="max-screen"
+                            >
+                                {{ file.fileLocation }}
+                            </span>
+
                             <p-button
-                                type="button"
+                                icon="pi pi-folder-open"
                                 size="small"
                                 [outlined]="true"
-                                (click)="openFileLocation(file)"
-                            >
-                                <span class="pr-3">📁</span>
-                                <span>{{ file[col.field] }}</span>
-                            </p-button>
+                                (onClick)="openFileLocation(file)"
+                            />
+                            <p-button
+                                icon="pi pi-clipboard"
+                                size="small"
+                                [outlined]="true"
+                                (onClick)="copyLocationToClipboard(file)"
+                            />
                         </div>
                     </div>
 
                     <div
                         *ngIf="col.type === 'pictures'"
-                        class="small-pic"
-                        (click)="openPic(file)"
+                        class="small-pic-container"
                     >
-                        <img
-                            *ngIf="file.hasPic"
-                            [src]="file.picUrl"
-                        />
+                        @if (file.hasPic === true) {
+                            {{ file.images.lenght }}
+
+                            @for (image of file.images; track image.id) {
+                                <img
+                                    [src]="image.path"
+                                    (click)="openPic(file, image.id)"
+                                />
+                            } @empty {
+                                None
+                            }
+                        }
                     </div>
                 </td>
             </tr>

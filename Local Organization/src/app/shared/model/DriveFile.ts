@@ -1,13 +1,19 @@
 export interface RawFile {
+    id: string;
     name: string;
     filepath: string;
+}
+
+export interface ImagePath {
+    id: string;
+    path: string;
 }
 
 export interface IFile extends RawFile {
     fileLocation: string;
     date: string;
     hasPic?: boolean;
-    picUrl?: string;
+    images?: ImagePath[]
     //
     recentlyOpened?: boolean;
 }
@@ -32,6 +38,7 @@ export const getNameFromFilepath = (filepath: string): string => {
 };
 
 export const defaultIFile: IFile = {
+    id: '',
     name: '',
     filepath: '',
     fileLocation: 'string',

@@ -34,7 +34,7 @@ export class BlenderFinderAsync {
         this.isChecking = true;
 
         return of(drive).pipe(
-            switchMap(drive => this.readDirectory(drive)),
+            switchMap(drive => BlenderFinderAsync.readDirectory(drive)),
             concatAll(),
             concatMap(fullPath => this.handleFileOrFolder(`${drive}${fullPath}`)),
         );
@@ -45,7 +45,7 @@ export class BlenderFinderAsync {
 
         if (isExcludedFromSearch) return of(undefined);
 
-        return from(this.readDirectory(path)).pipe(
+        return from(BlenderFinderAsync.readDirectory(path)).pipe(
             takeUntil(this.destroyed$),
             concatMap(filePaths => {
                 if (!this.isChecking) return EMPTY;
@@ -96,6 +96,7 @@ export class BlenderFinderAsync {
         if (exists) return { exists };
 
         const rawFile: RawFile = {
+            id: crypto.randomUUID(),
             name,
             filepath,
         };
@@ -108,9 +109,6 @@ export class BlenderFinderAsync {
         const foldersTo = rawFile.filepath.split('\\');
         const name = foldersTo[foldersTo.length - 1];
         const fileLocation = rawFile.filepath.replace(name, '');
-        let picUrl = fileLocation + 'SEEME.PNG';
-        picUrl = picUrl.replace(/\\/g, '/');
-        picUrl = 'file://' + picUrl;
 
         let stats: Stats;
         try {
@@ -122,30 +120,14 @@ export class BlenderFinderAsync {
         const file: IFile = {
             ...rawFile,
             date: BlenderFinderAsync.toDateString(stats.birthtime),
-            picUrl,
             hasPic: false,
             fileLocation,
         };
 
-        // this.readHasPic(picUrl, index)
-        //     .pipe(
-        //         tap(res => {
-        //             // console.log("hasPic$ . map -> res: ", res);
-        //             this.files[res.index].hasPic = res.hasPic;
-        //         }),
-        //         map(res => res.hasPic),
-        //         catchError(res => {
-        //             console.warn('err: ', res.err);
-        //             this.files[res.index].hasPic = res.hasPic;
-        //             return of(false);
-        //         }),
-        //     )
-        //     .subscribe();
-
         return file;
     }
 
-    private readDirectory(path): Promise<string[]> {
+    static readDirectory(path): Promise<string[]> {
         return new Promise((resolve, reject) => {
             try {
                 return ElectronService.FS.readdir(path, (err, filenames) => {

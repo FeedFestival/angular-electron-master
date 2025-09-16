@@ -59,6 +59,7 @@ export class BlenderFinder {
                 this.findBlendFiles(fullPath, results);
             } else if (stat.isFile() && fullPath.toLowerCase().endsWith(this.fileFilter)) {
                 const rawFile: RawFile = {
+                    id: crypto.randomUUID(),
                     name: getNameFromFilepath(fullPath),
                     filepath: fullPath,
                 };

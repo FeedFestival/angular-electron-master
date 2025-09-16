@@ -1,5 +1,33 @@
 <div>
-    <img [src]="url" />
+    <p-galleria
+        #galleriaRef
+        [(value)]="images"
+        [responsiveOptions]="responsiveOptions"
+        [numVisible]="7"
+        [(activeIndex)]="activeIndex"
+        [circular]="true"
+    >
+        <ng-template
+            pTemplate="item"
+            let-item
+        >
+            <img
+                [src]="item.itemImageSrc"
+                style="height: calc(100vh - 256px); display: block"
+            />
+        </ng-template>
+        <ng-template
+            pTemplate="thumbnail"
+            let-item
+        >
+            <div class="grid grid-nogutter justify-content-center">
+                <img
+                    [src]="item.thumbnailImageSrc"
+                    style="height: 64px"
+                />
+            </div>
+        </ng-template>
+    </p-galleria>
 </div>
 <div>
     <p-button (onClick)="close()">Close</p-button>

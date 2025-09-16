@@ -68,6 +68,10 @@ body app-root {
     display: none !important;
 }
 
+.max-screen {
+    max-width: 100vw;
+}
+
 //----------------------------------------------------------------------------------------------
 
 div.jsoneditor-tree {
@@ -135,3 +139,5 @@ div.jsoneditor-value[contenteditable='true']:hover {
         height: 22px !important;
     }
 }
+
+

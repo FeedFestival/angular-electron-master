@@ -4,8 +4,6 @@ export enum FILTER_TYPE {
     BOOL,
 }
 
-export const DELAY_IN_SEARCHING = 15;
-
 export const blenderFilesCols = [
     {
         field: "name",
@@ -38,36 +36,7 @@ export const blenderFilesCols = [
     },
 ];
 
-export const BLENDER_DIRS = {
-    // CHECK: 'E:/_New_Working Ground/1_LevelDesign/WildLife',
-    CHECK: [
-        "E:/__WorkingGround",
-
-        // "E:/_New_Working Ground",
-
-        // ------  1  ------------------------------------------
-        // "E:/_assets",
-        // "E:/_Comics",
-        // "E:/_githubGames",
-        // "E:/_kits",
-        // "E:/Old_Desktop",
-
-        // ------  2  ------------------------------------------ NOTHING COMES UP
-        // 'E:/_made_Games',
-        // 'E:/_ProiecteExterne',
-        // 'E:/_publish GAMES',
-        // 'E:/_UnityPackages',
-        // 'E:/Downloads',
-        // 'E:/League Of Legends',
-        // 'E:/MakeHuman',
-        // 'E:/Program Files'
-
-        // ------  1  ------------------------------------------
-        // 'F:/'
-    ],
-    SAVE: "E:/_assets",
-    SAVE_FILE: "___assets_JSON.json",
-};
+export const IMAGE_EXTS: string[] = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"];
 
 export const EXCLUDE_LIST = [
     // C:
