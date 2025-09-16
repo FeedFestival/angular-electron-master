@@ -6,37 +6,49 @@ export enum FILTER_TYPE {
 
 export const blenderFilesCols = [
     {
-        field: "name",
-        style: { width: "70px" },
-        header: "Filename",
-        type: "name",
+        field: 'name',
+        style: { width: '70px' },
+        header: 'Filename',
+        type: 'name',
         filterType: FILTER_TYPE.TEXT,
     },
     {
-        field: "fileLocation",
-        style: { width: "190px" },
-        header: "Path",
-        cClass: "dotdot",
-        type: "fileLocation",
+        field: 'fileLocation',
+        style: { width: '190px' },
+        header: 'Path',
+        cClass: 'dotdot',
+        type: 'fileLocation',
         filterType: FILTER_TYPE.TEXT,
     },
     {
-        field: "date",
-        style: { width: "50px" },
-        header: "Time",
-        type: "text",
+        field: 'lastAccess',
+        style: { width: '50px' },
+        header: 'lastAccess',
+        type: 'text',
     },
     {
-        field: "hasPic",
-        style: { width: "70px" },
-        header: "Pics",
-        type: "pictures",
+        field: 'lastModified',
+        style: { width: '50px' },
+        header: 'lastModified',
+        type: 'text',
+    },
+    {
+        field: 'birth',
+        style: { width: '50px' },
+        header: 'birth',
+        type: 'text',
+    },
+    {
+        field: 'hasPic',
+        style: { width: '70px' },
+        header: 'Pics',
+        type: 'pictures',
         noScroll: true,
         filterType: FILTER_TYPE.BOOL,
     },
 ];
 
-export const IMAGE_EXTS: string[] = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"];
+export const IMAGE_EXTS: string[] = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'];
 
 export const EXCLUDE_LIST = [
     // C:
@@ -67,6 +79,6 @@ export const EXCLUDE_LIST = [
     '.angular',
     'node_modules',
 
-    // 
-    '____enbw_case'
+    //
+    '____enbw_case',
 ];

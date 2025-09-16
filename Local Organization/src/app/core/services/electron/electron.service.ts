@@ -3,12 +3,11 @@ import { Injectable } from '@angular/core';
 // If you import a module but never use any of the imported values other than as TypeScript types,
 // the resulting javascript file will look as if you never imported the module at all.
 import * as childProcess from 'child_process';
-import { ExecOptions } from 'child_process';
-import { dialog, ipcRenderer, webFrame } from 'electron';
+import { ipcRenderer, webFrame } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { pid } from 'process';
-import { from, map, Observable, of, switchMap } from 'rxjs';
+import { from, Observable } from 'rxjs';
+import sharp from 'sharp';
 
 export type FSType = typeof fs;
 export type PathType = typeof path;
@@ -23,6 +22,7 @@ export class ElectronService {
     childProcess!: typeof childProcess;
     fs!: typeof fs;
     path!: typeof path;
+    sharp!: typeof sharp;
 
     duringServerKill = false;
 
@@ -42,6 +42,8 @@ export class ElectronService {
             this.path = (window as any).require('path');
             ElectronService.PATH = this.path;
             console.log('PATH Loaded');
+            
+            this.sharp = (window as any).require('sharp');
 
             this.childProcess = (window as any).require('child_process');
             ElectronService.PROCESS = this.childProcess;

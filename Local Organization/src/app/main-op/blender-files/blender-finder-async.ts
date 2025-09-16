@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import {
     concatAll,
     concatMap,
@@ -19,8 +20,6 @@ import { Stats } from 'fs';
 export class BlenderFinderAsync {
     rawFiles: RawFile[] = [];
     isChecking = false;
-
-    fileCount: number = 0;
 
     private fileFilter = '.blend';
     private destroyed$ = new Subject<void>();
@@ -78,7 +77,7 @@ export class BlenderFinderAsync {
 
                 if (exists || skip) return of(undefined);
 
-                return of(BlenderFinderAsync.toFile(rawFile, this.fileCount));
+                return of(BlenderFinderAsync.toFile(rawFile));
             }
         } catch (e) {}
         return of(undefined);
@@ -105,7 +104,7 @@ export class BlenderFinderAsync {
         return { rawFile };
     }
 
-    static toFile(rawFile: RawFile, index: number): IFile {
+    static toFile(rawFile: RawFile): IFile {
         const foldersTo = rawFile.filepath.split('\\');
         const name = foldersTo[foldersTo.length - 1];
         const fileLocation = rawFile.filepath.replace(name, '');
@@ -119,7 +118,9 @@ export class BlenderFinderAsync {
 
         const file: IFile = {
             ...rawFile,
-            date: BlenderFinderAsync.toDateString(stats.birthtime),
+            birth: dayjs(stats.birthtime).format('YYYY-MM-DD HH:mm'),
+            lastAccess: dayjs(stats.atime).format('YYYY-MM-DD HH:mm'),
+            lastModified: dayjs(stats.mtime).format('YYYY-MM-DD HH:mm'),
             hasPic: false,
             fileLocation,
         };
@@ -142,16 +143,6 @@ export class BlenderFinderAsync {
                 resolve([]);
             }
         });
-    }
-
-    static toDateString(date: Date) {
-        let dateString = 'yyyy-mm-dd';
-
-        dateString = dateString.replace('yyyy', this.pad(date.getFullYear(), 2).toString());
-        dateString = dateString.replace('mm', this.pad(date.getMonth(), 2).toString());
-        dateString = dateString.replace('dd', this.pad(date.getDate(), 2).toString());
-
-        return dateString;
     }
 
     static pad(n, width, z?) {

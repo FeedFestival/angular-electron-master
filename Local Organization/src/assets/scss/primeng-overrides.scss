@@ -86,3 +86,9 @@
 .p-datatable.p-datatable-sm .p-datatable-tbody > tr > td {
     padding: 0.25rem 0.5rem;
 }
+
+.p-datatable .p-sortable-column.p-highlight,
+.p-datatable .p-sortable-column:not(.p-highlight):hover {
+    background-color: #19222d;
+    color: white;
+}

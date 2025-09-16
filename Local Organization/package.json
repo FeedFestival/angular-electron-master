@@ -57,6 +57,7 @@
         "@angular/platform-browser-dynamic": "17.3.6",
         "@angular/router": "17.3.6",
         "ang-jsoneditor": "4.0.2",
+        "dayjs": "1.11.18",
         "jsoneditor": "10.2.0",
         "ngx-electronyzer": "18.2.0",
         "prettier": "3.5.3",
@@ -64,6 +65,7 @@
         "primeicons": "7.0.0",
         "primeng": "17.18.15",
         "rxjs": "7.8.1",
+        "sharp": "0.34.3",
         "tslib": "2.6.2",
         "zone.js": "0.14.4"
     },
@@ -82,7 +84,6 @@
         "@ngx-translate/http-loader": "8.0.0",
         "@playwright/test": "1.43.1",
         "@types/jest": "29.5.12",
-        "@types/lodash": "4.17.16",
         "@types/node": "20.12.7",
         "@typescript-eslint/eslint-plugin": "7.7.1",
         "@typescript-eslint/parser": "7.7.1",

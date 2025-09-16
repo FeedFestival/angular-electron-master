@@ -7,11 +7,14 @@ export interface RawFile {
 export interface ImagePath {
     id: string;
     path: string;
+    thumbnail?: string;
 }
 
 export interface IFile extends RawFile {
     fileLocation: string;
-    date: string;
+    lastAccess: string;
+    lastModified: string;
+    birth: string;
     hasPic?: boolean;
     images?: ImagePath[]
     //
@@ -42,5 +45,7 @@ export const defaultIFile: IFile = {
     name: '',
     filepath: '',
     fileLocation: 'string',
-    date: '',
+    birth: '',
+    lastAccess: '',
+    lastModified: ''
 };

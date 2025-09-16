@@ -1,14 +1,16 @@
 import { NgClass, NgFor, NgForOf, NgIf, NgStyle } from '@angular/common';
-import { Component, OnDestroy, ViewChild } from '@angular/core';
+import { Component, NgZone, OnDestroy, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ElectronService as NgxElectronService } from 'ngx-electronyzer';
 import { ButtonModule } from 'primeng/button';
 import { DropdownModule } from 'primeng/dropdown';
 import { DialogService } from 'primeng/dynamicdialog';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
-import { Subject, from, merge, of } from 'rxjs';
+import { Observable, Subject, forkJoin, from, merge, of } from 'rxjs';
 import { distinct, finalize, map, switchMap, takeUntil } from 'rxjs/operators';
 import { AppService } from '../../app.service';
 import { ElectronService } from '../../core/services';
@@ -37,6 +39,8 @@ const FORM_VALUE_KEY = 'blender-files-form-values';
         DropdownModule,
         TableModule,
         TooltipModule,
+        IconFieldModule,
+        InputIconModule,
     ],
     templateUrl: './blender-files.component.html',
     styleUrls: ['./blender-files.component.scss'],
@@ -45,7 +49,7 @@ export class BlenderFilesComponent implements OnDestroy {
     FILTER_TYPE = FILTER_TYPE;
     cols = blenderFilesCols;
 
-    @ViewChild('tableRef') tableRef: any;
+    @ViewChild('dt') dt: any;
 
     fg: FormGroup;
     // blenderFinder = new BlenderFinderAsync('.blend');
@@ -57,6 +61,7 @@ export class BlenderFilesComponent implements OnDestroy {
 
     constructor(
         private fb: FormBuilder,
+        protected readonly zone: NgZone,
         private appService: AppService,
         private dialog: DialogService,
         private electron: ElectronService,
@@ -120,7 +125,7 @@ export class BlenderFilesComponent implements OnDestroy {
     }
 
     refresh() {
-        this.tableRef?.reset();
+        this.dt?.reset();
     }
 
     onPage($event) {
@@ -178,6 +183,52 @@ export class BlenderFilesComponent implements OnDestroy {
         //     .subscribe();
     }
 
+    findImages(): void {
+        if (!this.files) return;
+
+        const observables = this.files.map(file =>
+            of(file).pipe(
+                switchMap(file =>
+                    from(BlenderFinderAsync.readDirectory(file.fileLocation)).pipe(
+                        switchMap(filenamesInDir => {
+                            const imagesPaths = filenamesInDir
+                                .filter(filename =>
+                                    IMAGE_EXTS.some(ext => filename.toLowerCase().endsWith(ext)),
+                                )
+                                .map(filename => `${(file.fileLocation + filename).replace(/\\/g, '/')}`);
+                            return forkJoin(imagesPaths.map(imgp => this.resizeToThumbnail(imgp)));
+                        }),
+                        map(imagesInDir => {
+                            const images = imagesInDir.map(img => {
+                                return {
+                                    id: crypto.randomUUID(),
+                                    path: `safe-file://${img.filepath}`,
+                                    thumbnail: img.data,
+                                } as ImagePath;
+                            });
+                            return {
+                                ...file,
+                                hasPic: !!images && images.length > 0,
+                                images,
+                            };
+                        }),
+                    ),
+                ),
+                takeUntil(this.destroyed$),
+            ),
+        );
+
+        merge(...observables)
+            .pipe(takeUntil(this.destroyed$))
+            .subscribe(completeFile => {
+                this.zone.run(() => {
+                    const index = this.files.findIndex(f => f.id === completeFile.id);
+                    this.files[index].images = completeFile.images;
+                    this.files[index].hasPic = completeFile.hasPic;
+                });
+            });
+    }
+
     private onSearchFinished(): void {
         this.blenderFinder.isChecking = false;
 
@@ -188,49 +239,12 @@ export class BlenderFilesComponent implements OnDestroy {
         this.saveDriveFile(driveFile);
     }
 
-    private onTableDataLoaded(files?: RawFile[]): void {
-        if (files) {
-            this.files = files.map((f, i) => {
-                const file = BlenderFinderAsync.toFile(f, i);
-                if (!file) return { ...f, ...defaultIFile, name: `DELETED ? ${f.name}` };
-                return file;
-            });
-        }
-
-        if (this.files) {
-            const observables = this.files.map(file =>
-                of(file).pipe(
-                    switchMap(file =>
-                        from(BlenderFinderAsync.readDirectory(file.fileLocation)).pipe(
-                            map(filenamesInDir => {
-                                const images = filenamesInDir
-                                    .filter(filename =>
-                                        IMAGE_EXTS.some(ext => filename.toLowerCase().endsWith(ext)),
-                                    )
-                                    .map(filename => ({
-                                        id: crypto.randomUUID(),
-                                        path: `safe-file://${(file.fileLocation + filename).replace(/\\/g, '/')}`,
-                                    }));
-                                return {
-                                    ...file,
-                                    hasPic: !!images && images.length > 0,
-                                    images,
-                                };
-                            }),
-                        ),
-                    ),
-                    takeUntil(this.destroyed$),
-                ),
-            );
-
-            merge(...observables)
-                .pipe(takeUntil(this.destroyed$))
-                .subscribe(completeFile => {
-                    const index = this.files.findIndex(f => f.id === completeFile.id);
-                    this.files[index].images = completeFile.images;
-                    this.files[index].hasPic = completeFile.hasPic;
-                });
-        }
+    private onTableDataLoaded(rawFiles: RawFile[]): void {
+        this.files = rawFiles.map(rawFile => {
+            const file = BlenderFinderAsync.toFile(rawFile);
+            if (!file) return { ...rawFile, ...defaultIFile, name: `DELETED ? ${rawFile.name}` };
+            return file;
+        });
     }
 
     private highlightRecent(file: IFile) {
@@ -242,6 +256,17 @@ export class BlenderFilesComponent implements OnDestroy {
     private unsubscribe() {
         this.destroyed$.complete();
         this.destroyed$.unsubscribe();
+    }
+
+    private resizeToThumbnail(filepath: string): Observable<{ filepath: string; data: string }> {
+        const loaded = this.electron.sharp(filepath);
+
+        return from(loaded.resize(64, 64).toBuffer()).pipe(
+            map(buffer => ({
+                filepath,
+                data: 'data:image/png;base64,' + buffer.toString('base64'),
+            })),
+        );
     }
 
     ngOnDestroy() {

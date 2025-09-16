@@ -8,8 +8,6 @@ export class BlenderFinder {
     rawFiles: RawFile[] = [];
     isChecking = false;
 
-    fileCount: number = 0;
-
     private fileFilter = '.blend';
 
     constructor(fileFilter: string) {
@@ -21,7 +19,6 @@ export class BlenderFinder {
         return of(this.findBlendFiles(drive)).pipe(
             tap(files => {
                 this.rawFiles = files;
-                this.fileCount = this.rawFiles.length;
             }),
         );
     }
