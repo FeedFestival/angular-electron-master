@@ -58,7 +58,6 @@
         "@angular/router": "17.3.6",
         "ang-jsoneditor": "4.0.2",
         "jsoneditor": "10.2.0",
-        "lodash": "4.17.21",
         "ngx-electronyzer": "18.2.0",
         "prettier": "3.5.3",
         "primeflex": "4.0.0",
@@ -111,5 +110,10 @@
     },
     "browserslist": [
         "chrome 114"
-    ]
+    ],
+    "build": {
+        "win": {
+            "requestedExecutionLevel": "requireAdministrator"
+        }
+    }
 }

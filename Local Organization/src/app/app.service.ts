@@ -29,9 +29,8 @@ export class AppService {
             }
 
             let result;
-            if (ext === 'json')
-                result = JSON.parse(data);
-            
+            if (ext === 'json') result = JSON.parse(data);
+
             sub.next(result);
         });
 
@@ -98,5 +97,31 @@ export class AppService {
                 console.log('Created folder:', currentPath);
             }
         }
+    }
+
+    static saveFile(
+        jsonString: string,
+        absolutePath: string,
+        file: string,
+        ext: string = 'json',
+    ): Observable<string> {
+        const completePath = `${absolutePath}/${file}.${ext}`;
+        const sub = new Subject<string>();
+
+        const options: WriteFileOptions = {
+            encoding: 'utf8',
+        };
+
+        ElectronService.FS.writeFile(completePath, jsonString, options, data => {
+            console.log('FS writeFile -> data: ', data);
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            if (!data) {
+                sub.next(`${SUCCESS}: ${data}`);
+                return;
+            }
+            sub.error({});
+        });
+
+        return sub.asObservable();
     }
 }

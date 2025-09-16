@@ -1,87 +1,133 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { Observable, Subject, Subscription, from, of } from 'rxjs';
-import { catchError, concatAll, debounceTime, delay, map, takeUntil, tap } from 'rxjs/operators';
-import { NgForOf, NgIf, NgStyle } from '@angular/common';
+import { NgClass, NgForOf, NgIf, NgStyle } from '@angular/common';
+import { Component, OnDestroy, ViewChild } from '@angular/core';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ElectronService as NgxElectronService } from 'ngx-electronyzer';
+import { ButtonModule } from 'primeng/button';
+import { DropdownModule } from 'primeng/dropdown';
 import { DialogService } from 'primeng/dynamicdialog';
+import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
+import { EMPTY, Observable, Subject, from, of } from 'rxjs';
+import {
+    catchError,
+    concatAll,
+    concatMap,
+    delay,
+    distinct,
+    map,
+    switchMap,
+    takeUntil,
+    tap,
+} from 'rxjs/operators';
+import { AppService } from '../../app.service';
 import { ElectronService } from '../../core/services';
 import { SeeImageComponent } from '../../shared/components/see-image/see-image.component';
-import { BLENDER_DIRS, DELAY_IN_SEARCHING, FILTER_TYPE, blenderFilesCols } from './blender-files.constants';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
+import { LabelValue } from '../../shared/model';
+import { DriveFile, FileCheck, FilePathCheck, IFile, RawFile } from '../../shared/model/DriveFile';
+import { EXCLUDE_LIST, FILTER_TYPE, blenderFilesCols } from './blender-files.constants';
+import { BLENDER_FILES_DRIVE_FILE, BlenderFilesService } from './blender-files.service';
+
+const FORM_VALUE_KEY = 'blender-files-form-values';
+
+const FILE_FILTER = '.blend';
 
 @Component({
     selector: 'app-blender-files',
     standalone: true,
-    imports: [NgIf, NgForOf, NgStyle, ButtonModule, InputTextModule, TableModule],
+    imports: [
+        NgIf,
+        NgForOf,
+        NgStyle,
+        NgClass,
+        ReactiveFormsModule,
+        ButtonModule,
+        InputTextModule,
+        DropdownModule,
+        TableModule,
+    ],
     templateUrl: './blender-files.component.html',
     styleUrls: ['./blender-files.component.scss'],
 })
-export class BlenderFilesComponent implements OnInit, OnDestroy {
+export class BlenderFilesComponent implements OnDestroy {
     FILTER_TYPE = FILTER_TYPE;
     cols = blenderFilesCols;
 
     @ViewChild('tableRef') tableRef: any;
-    // filteredFiles = [];
+
+    fg: FormGroup;
+
     fileCount: number = 0;
     checkedFiles: number = 0;
-    lastFilesChecked = [];
+    isChecking = false;
     directories: any[];
 
-    stopAfterCount = 999;
-    stop = false;
-
-    files: any[] = [];
-    private ngDestroyed$ = new Subject<void>();
-    private recheckDirs$: Subscription;
-    private readDirectory$: Subscription;
-    private checkAndAddDirectory$: Subscription;
+    drives: LabelValue<string>[] = [];
+    rawFiles: RawFile[] = [];
+    files: IFile[] = [];
+    private destroyed$ = new Subject<void>();
 
     constructor(
+        private fb: FormBuilder,
+        private appService: AppService,
         private dialog: DialogService,
         private electron: ElectronService,
+        private blenderFilesService: BlenderFilesService,
         private ngxElectron: NgxElectronService,
-    ) {}
+    ) {
+        this.fg = this.fb.group(
+            {
+                drive: this.fb.control(null, Validators.required),
+            },
+            { updateOn: 'blur' },
+        );
 
-    ngOnInit() {
-        if (!this.electron.fs.existsSync(BLENDER_DIRS.SAVE)) {
-            return;
+        this.electron
+            .getDriveList()
+            .subscribe(result => (this.drives = result.map(it => ({ label: it, value: it }))));
+
+        const blenderFilesFormValues = localStorage.getItem(FORM_VALUE_KEY);
+        if (blenderFilesFormValues) {
+            const formValues = JSON.parse(blenderFilesFormValues);
+            this.fg.patchValue(formValues);
         }
-    }
 
-    loadFromJson() {
-        ElectronService.FS.readFile(BLENDER_DIRS.SAVE + '/' + BLENDER_DIRS.SAVE_FILE, (err, data) => {
-            if (err) return console.log(err);
-            const jsonData = JSON.parse(data as any);
-            this.files = [];
-            jsonData.files.forEach(loadedFile => {
-                loadedFile.isLoadedFile = true;
-                this.files.push(loadedFile);
+        //
+        this.fg.controls.drive.valueChanges
+            .pipe(
+                switchMap(drive =>
+                    this.appService.readFile(drive, BLENDER_FILES_DRIVE_FILE).pipe(
+                        switchMap((driveFile: DriveFile) => {
+                            if (!driveFile) return this.blenderFilesService.createDefaultDriveFile(drive);
+                            return of(driveFile);
+                        }),
+                    ),
+                ),
+            )
+            .subscribe(driveFile => {
+                console.log('driveFile: ', driveFile);
+                this.files = driveFile.files.map((f, i) => {
+                    return this.toFile(f, i);
+                });
+                this.fileCount = this.files.length;
             });
-            this.fileCount = this.files.length;
-        });
     }
 
-    saveToJson() {
-        if (!ElectronService.FS.existsSync(BLENDER_DIRS.SAVE)) {
-            ElectronService.FS.mkdirSync(BLENDER_DIRS.SAVE);
-        }
-
-        const filesJson = {
-            lastCheck: new Date().getMilliseconds(),
-            files: this.files,
-            // .map(f => ({ ...f, hasPic$: null })),
+    selectDirectory(): void {
+        const opts: Electron.OpenDialogOptions = {
+            properties: ['openDirectory'],
         };
-
-        const path = BLENDER_DIRS.SAVE + '/' + BLENDER_DIRS.SAVE_FILE;
-        const content = JSON.stringify(filesJson);
-        ElectronService.FS.writeFileSync(path, content);
+        from(this.electron.openFileOrFolderDialog(opts)).subscribe(
+            (result: Electron.OpenDialogReturnValue) => {
+                console.log('result: ', result);
+            },
+        );
     }
 
-    cancel() {
-        this.stop = true;
-        this.unsubscribe();
+    saveDriveFile(driveFile: DriveFile) {
+        const rawValue = this.fg.getRawValue();
+        this.appService
+            .saveFile(JSON.stringify(driveFile, null, 2), `${rawValue.drive}/`, BLENDER_FILES_DRIVE_FILE)
+            .subscribe();
     }
 
     refresh() {
@@ -127,159 +173,156 @@ export class BlenderFilesComponent implements OnInit, OnDestroy {
         });
     }
 
-    recheck() {
+    stop(): void {
+        this.isChecking = false;
+    }
+
+    findBlenderFiles(): void {
+        this.rawFiles = [];
         this.files = [];
 
-        const dirs = BLENDER_DIRS.CHECK.map(checkFolder => of(checkFolder)) as any[];
-        this.recheckDirs$ = from(dirs)
+        const rawValue = this.fg.getRawValue();
+        this.isChecking = true;
+        of(rawValue.drive)
             .pipe(
-                takeUntil(this.ngDestroyed$),
+                switchMap(drive => this.readDirectory(`${drive}/`)),
                 concatAll(),
-                tap(checkFolder => {
-                    if (this.stop) {
-                        this.recheckDirs$.unsubscribe();
-                        return;
-                    }
-
-                    console.log('0. checkFolder: ', checkFolder);
-                    this.findAllDirectories(checkFolder);
-                }),
-            )
-            .subscribe();
-    }
-
-    private findAllDirectories(path) {
-        // console.log("1. findAllDirectories -> ");
-        this.readDirectory$ = from(this.readDirectory(path))
-            .pipe(
-                takeUntil(this.ngDestroyed$),
-                debounceTime(DELAY_IN_SEARCHING),
-                tap(files => {
-                    if (this.stop) {
-                        this.readDirectory$.unsubscribe();
-                        return;
-                    }
-
-                    // console.log("2. readDirectory -> ", files);
-                    this.checkedFiles++;
-                    if (this.lastFilesChecked.length > 4) {
-                        this.lastFilesChecked.splice(this.lastFilesChecked.length - 1, 1);
-                    }
-                    this.lastFilesChecked.unshift(path);
-                    this.checkAndAddDirectory({ files, options: { startPath: path, filter: '.blend' } });
-                }),
-            )
-            .subscribe();
-    }
-
-    private checkAndAddDirectory(filesOps: any) {
-        if (!filesOps?.files) {
-            return;
-        }
-
-        const filesObs = filesOps.files.map(f =>
-            of({
-                filename: ElectronService.PATH.join(filesOps.options.startPath, f),
-                options: filesOps.options,
-            }).pipe(takeUntil(this.ngDestroyed$), delay(DELAY_IN_SEARCHING / 2)),
-        ) as any[];
-
-        // console.log("filesObs => " + filesObs.length);
-
-        this.checkAndAddDirectory$ = from(filesObs)
-            .pipe(
-                takeUntil(this.ngDestroyed$),
-                concatAll(),
+                concatMap(fullPath => this.handleFileOrFolder(`${rawValue.drive}/${fullPath}`)),
                 tap(file => {
-                    if (this.stop) {
-                        this.checkAndAddDirectory$.unsubscribe();
-                        return;
-                    }
-                    // console.log("---- 3. handleFoundFile -> ", file);
-                    this.handleFoundFile(file);
+                    if (!file) return;
+
+                    console.log('this.files[' + this.files.length + '] <- transformedFile: ', file);
+
+                    this.files.push(file);
+                    this.fileCount = this.files.length;
                 }),
             )
-            .subscribe();
+            .subscribe(() => {
+                const driveFile: DriveFile = {
+                    lastCheckupDate: new Date().toISOString(),
+                    files: this.rawFiles,
+                };
+                this.saveDriveFile(driveFile);
+            });
     }
 
-    private handleFoundFile(file: any) {
-        var stat = ElectronService.FS.lstatSync(file.filename);
-        if (stat.isDirectory()) {
-            this.findAllDirectories(file.filename);
-        } else if (file.filename.indexOf(file.options.filter) >= 0) {
-            const stats = ElectronService.FS.statSync(file.filename);
-            const birth = this.toDateString(stats.birthtime);
-            const foldersTo = file.filename.split('\\');
-            const name = foldersTo[foldersTo.length - 1];
-            const nameSplit = name.split('.');
-            const ext = nameSplit[nameSplit.length - 1];
-            if (ext !== 'blend') {
-                const existsAllready = this.files.some(
-                    f => f.filename === file.filename.substring(0, file.filename.length - 1),
-                );
-                if (existsAllready) {
-                    return;
-                }
-            }
-            const foundFile = {
-                name: name,
-                filename: file.filename,
-                birth: birth,
-            };
+    private findAllDirectories(path: string): Observable<IFile> {
+        const isExcludedFromSearch = EXCLUDE_LIST.some(excluded => path.indexOf(excluded) >= 0);
 
-            this.fileCount = this.files.length;
-            const transformedFile = this.transformFile(foundFile, this.fileCount);
-            // console.log("this.files[" + this.files.length + "] <- transformedFile: ", transformedFile);
+        if (isExcludedFromSearch) return of(undefined);
 
-            this.files.push(transformedFile);
+        return from(this.readDirectory(path)).pipe(
+            takeUntil(this.destroyed$),
+            concatMap(filePaths => {
+                this.checkedFiles++;
 
-            if (this.fileCount > this.stopAfterCount) {
-                this.stop = true;
-            }
+                if (!this.isChecking) return EMPTY;
 
-            this.refresh();
+                return this.checkAndAddDirectory({ filePaths, startPath: path });
+            }),
+        );
+    }
+
+    private checkAndAddDirectory(filePathCheck: FilePathCheck): Observable<IFile> {
+        if (!filePathCheck?.filePaths) {
+            return of(undefined);
         }
+
+        return from(filePathCheck.filePaths).pipe(
+            map(f => ElectronService.PATH.join(filePathCheck.startPath, f)),
+            distinct(),
+            concatMap(filepath => this.handleFileOrFolder(filepath)),
+        );
     }
 
-    private transformFile(f, index) {
-        const foldersTo = f.filename.split('\\');
+    private handleFileOrFolder(filepath: string): Observable<IFile> {
+        console.log('filepath: ', filepath);
+        try {
+            var stat = ElectronService.FS.lstatSync(filepath);
+            if (stat.isDirectory()) {
+                return this.findAllDirectories(filepath);
+            } else if (filepath.indexOf(FILE_FILTER) >= 0) {
+                const { exists, skip, rawFile } = this.getRawFile(filepath);
+
+                if (exists || skip) return of(undefined);
+
+                return of(this.toFile(rawFile, this.fileCount));
+            }
+        } catch (e) {}
+        return of(undefined);
+    }
+
+    private getRawFile(filepath: string): { exists?: boolean; skip?: boolean; rawFile?: RawFile } {
+        const foldersTo = filepath.split('\\');
         const name = foldersTo[foldersTo.length - 1];
-        const fileLocation = f.filename.replace(name, '');
+        const nameSplit = name.split('.');
+        const ext = nameSplit[nameSplit.length - 1];
+
+        const skip = ext !== 'blend';
+        if (skip) return { skip };
+
+        const exists = this.rawFiles.findIndex(f => f.name === name) >= 0;
+        if (exists) return { exists };
+
+        const rawFile: RawFile = {
+            name,
+            filepath,
+        };
+        this.rawFiles.push(rawFile);
+
+        return { rawFile };
+    }
+
+    private toFile(rawFile: RawFile, index: number): IFile {
+        const foldersTo = rawFile.filepath.split('\\');
+        const name = foldersTo[foldersTo.length - 1];
+        const fileLocation = rawFile.filepath.replace(name, '');
         let picUrl = fileLocation + 'SEEME.PNG';
         picUrl = picUrl.replace(/\\/g, '/');
         picUrl = 'file://' + picUrl;
-        const file = {
-            ...f,
+
+        const stats = ElectronService.FS.statSync(rawFile.filepath);
+
+        const file: IFile = {
+            ...rawFile,
+            date: this.toDateString(stats.birthtime),
             picUrl,
             hasPic: false,
             fileLocation,
         };
-        this.readHasPic(picUrl, index)
-            .pipe(
-                tap(res => {
-                    // console.log("hasPic$ . map -> res: ", res);
-                    this.files[res.index].hasPic = res.hasPic;
-                }),
-                map(res => res.hasPic),
-                catchError(res => {
-                    console.warn('err: ', res.err);
-                    this.files[res.index].hasPic = res.hasPic;
-                    return of(false);
-                }),
-            )
-            .subscribe();
+
+        // this.readHasPic(picUrl, index)
+        //     .pipe(
+        //         tap(res => {
+        //             // console.log("hasPic$ . map -> res: ", res);
+        //             this.files[res.index].hasPic = res.hasPic;
+        //         }),
+        //         map(res => res.hasPic),
+        //         catchError(res => {
+        //             console.warn('err: ', res.err);
+        //             this.files[res.index].hasPic = res.hasPic;
+        //             return of(false);
+        //         }),
+        //     )
+        //     .subscribe();
+
         return file;
     }
 
-    private readDirectory(path): Promise<any[]> {
+    private readDirectory(path): Promise<string[]> {
         return new Promise((resolve, reject) => {
-            return ElectronService.FS.readdir(path, (err, filenames) => {
-                if (err != null) {
-                    reject(err);
-                } else {
-                    resolve(filenames);
-                }
-            });
+            try {
+                return ElectronService.FS.readdir(path, (err, filenames) => {
+                    if (err != null) {
+                        // reject(err);
+                        resolve([]);
+                    } else {
+                        resolve(filenames);
+                    }
+                });
+            } catch (e) {
+                resolve([]);
+            }
         });
     }
 
@@ -287,8 +330,7 @@ export class BlenderFilesComponent implements OnInit, OnDestroy {
         return from(
             new Promise<{ hasPic: boolean; index: number; err?: any }>((resolve, reject) => {
                 const formatedPicUrl = picUrl.replace('file://', '');
-                // const f_ok = ElectronService.FS.F_OK;
-                const f_ok = 0;
+                const f_ok = ElectronService.FS.constants.F_OK;
                 return ElectronService.FS.access(formatedPicUrl, f_ok, err => {
                     const hasPic = err ? false : true;
                     // console.log("[" + formatedPicUrl + "] hasPic: ", false);
@@ -302,7 +344,7 @@ export class BlenderFilesComponent implements OnInit, OnDestroy {
         );
     }
 
-    private highlightRecent(file) {
+    private highlightRecent(file: IFile) {
         this.files.forEach(f => (f.recentlyOpened = false));
         const index = this.files.findIndex(f => f.name === file.name);
         this.files[index].recentlyOpened = true;
@@ -325,8 +367,8 @@ export class BlenderFilesComponent implements OnInit, OnDestroy {
     }
 
     private unsubscribe() {
-        this.ngDestroyed$.complete();
-        this.ngDestroyed$.unsubscribe();
+        this.destroyed$.complete();
+        this.destroyed$.unsubscribe();
     }
 
     ngOnDestroy() {

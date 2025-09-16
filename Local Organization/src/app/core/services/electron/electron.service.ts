@@ -8,7 +8,7 @@ import { dialog, ipcRenderer, webFrame } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { pid } from 'process';
-import { from, Observable, of, switchMap } from 'rxjs';
+import { from, map, Observable, of, switchMap } from 'rxjs';
 
 export type FSType = typeof fs;
 export type PathType = typeof path;
@@ -20,7 +20,6 @@ export type ChildProcessType = typeof childProcess;
 export class ElectronService {
     ipcRenderer!: typeof ipcRenderer;
     webFrame!: typeof webFrame;
-    dialog!: typeof dialog;
     childProcess!: typeof childProcess;
     fs!: typeof fs;
     path!: typeof path;
@@ -36,14 +35,13 @@ export class ElectronService {
         if (this.isElectron) {
             this.ipcRenderer = (window as any).require('electron').ipcRenderer;
             this.webFrame = (window as any).require('electron').webFrame;
-            this.dialog = (window as any).require('electron').dialog;
 
             this.fs = (window as any).require('fs');
             ElectronService.FS = this.fs;
-            console.log("FS Loaded");
+            console.log('FS Loaded');
             this.path = (window as any).require('path');
             ElectronService.PATH = this.path;
-            console.log("PATH Loaded");
+            console.log('PATH Loaded');
 
             this.childProcess = (window as any).require('child_process');
             ElectronService.PROCESS = this.childProcess;
@@ -71,6 +69,21 @@ export class ElectronService {
             // ipcRenderer.invoke can serve many common use cases.
             // https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendererinvokechannel-args
         }
+    }
+
+    getDriveList(): Observable<string[]> {
+        return from(
+            new Promise((resolve, reject) => {
+                this.childProcess.exec('wmic logicaldisk get name', (err, stdout) => {
+                    if (err) return reject(err);
+                    const drives = stdout
+                        .split('\r\n')
+                        .filter(line => line.trim().endsWith(':'))
+                        .map(line => line.trim());
+                    resolve(drives);
+                });
+            }),
+        ) as Observable<string[]>;
     }
 
     async openFileOrFolderDialog(

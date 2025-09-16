@@ -4,7 +4,7 @@ export enum FILTER_TYPE {
     BOOL,
 }
 
-export const DELAY_IN_SEARCHING = 100;
+export const DELAY_IN_SEARCHING = 15;
 
 export const blenderFilesCols = [
     {
@@ -14,13 +14,6 @@ export const blenderFilesCols = [
         type: "name",
         filterType: FILTER_TYPE.TEXT,
     },
-    // {
-    //     field: "description",
-    //     style: { width: "100px" },
-    //     header: "Description",
-    //     type: "text",
-    //     filterType: FILTER_TYPE.TEXT,
-    // },
     {
         field: "fileLocation",
         style: { width: "190px" },
@@ -30,7 +23,7 @@ export const blenderFilesCols = [
         filterType: FILTER_TYPE.TEXT,
     },
     {
-        field: "birth",
+        field: "date",
         style: { width: "50px" },
         header: "Time",
         type: "text",
@@ -48,7 +41,7 @@ export const blenderFilesCols = [
 export const BLENDER_DIRS = {
     // CHECK: 'E:/_New_Working Ground/1_LevelDesign/WildLife',
     CHECK: [
-        // "E:/__WorkingGround",
+        "E:/__WorkingGround",
 
         // "E:/_New_Working Ground",
 
@@ -70,8 +63,42 @@ export const BLENDER_DIRS = {
         // 'E:/Program Files'
 
         // ------  1  ------------------------------------------
-        'F:/'
+        // 'F:/'
     ],
     SAVE: "E:/_assets",
     SAVE_FILE: "___assets_JSON.json",
 };
+
+export const EXCLUDE_LIST = [
+    // C:
+    '$WinREAgent',
+    '$Recycle.Bin',
+    'Config.Msi',
+    'AMD',
+    'Windows',
+    'nvm4w',
+
+    'OneDriveTemp',
+    'ProgramData',
+    'Recovery',
+    'Program Files',
+    'Program Files (x86)',
+
+    'Riot Games',
+
+    '_AI',
+
+    'Users', // Should  we? First let's see if something in them
+
+    //
+
+    'ripped-polyperfect',
+    'Library',
+    'Logs',
+    '.git',
+    '.angular',
+    'node_modules',
+
+    // 
+    '____enbw_case'
+];

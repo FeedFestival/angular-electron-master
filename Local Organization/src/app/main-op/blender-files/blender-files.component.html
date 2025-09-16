@@ -1,21 +1,59 @@
-<div class="grid mb-3">
+<form
+    [formGroup]="fg"
+    class="grid mb-3"
+>
+    <div class="flex align-items-center justify-flex-start gap-3 col-12">
+        <p>Select a drive to scan</p>
+
+        <p-dropdown
+            formControlName="drive"
+            [options]="drives"
+            placeholder="Select Drive"
+        />
+    </div>
+
     <div class="col-12">
+        <p-button
+            type="button"
+            size="small"
+            [outlined]="true"
+            severity="secondary"
+            [disabled]="this.fg.controls.drive.invalid"
+            (onClick)="findBlenderFiles()"
+        >
+            Find Blender Files
+        </p-button>
+
+        @if (isChecking) {
+            <p-button
+                type="button"
+                size="small"
+                [outlined]="true"
+                severity="secondary"
+                (onClick)="stop()"
+            >
+                Stop
+            </p-button>
+        }
+
         <button
             class="mx-4"
             type="button"
             pButton
             size="small"
-            color="accent"
-            (click)="cancel()"
+            [outlined]="true"
+            severity="secondary"
+            (click)="selectDirectory()"
         >
-            Cancel
+            Select Directory
         </button>
 
         <button
             type="button"
             pButton
             size="small"
-            color="primary"
+            [outlined]="true"
+            severity="secondary"
             [disabled]="false"
             (click)="recheck()"
         >
@@ -24,174 +62,140 @@
                 {{ checkedFiles + ' - ' + fileCount }}
             </span>
         </button>
-
-        <button
-            type="button"
-            pButton
-            size="small"
-            color="primary"
-            class="ml-3"
-            (click)="loadFromJson()"
-        >
-            Load Checked From Json
-        </button>
-
-        <button
-            type="button"
-            pButton
-            size="small"
-            color="primary"
-            class="ml-3"
-            (click)="saveToJson()"
-        >
-            Save to Json
-        </button>
     </div>
+</form>
 
-    <div
-        class="col-12 mt-3"
-        style="background: black; color: white"
+<div class="p-0 mt-3">
+    <p-table
+        #tableRef
+        [value]="files"
+        [columns]="cols"
+        [paginator]="true"
+        [showJumpToPageDropdown]="true"
+        [showPageLinks]="true"
+        [rows]="50"
+        [resizableColumns]="true"
+        [globalFilterFields]="['name', 'filename', 'date']"
     >
-        <div
-            class="col-12"
-            *ngFor="let filechecked of lastFilesChecked"
-        >
-            {{ filechecked }}
-        </div>
-    </div>
-
-    <div class="col-12 p-0 mt-3">
-        <p-table
-            #tableRef
-            [value]="files"
-            [columns]="cols"
-            [paginator]="true"
-            [showJumpToPageDropdown]="true"
-            [showPageLinks]="true"
-            [rows]="50"
-            [resizableColumns]="true"
-            [globalFilterFields]="['name', 'filename', 'birth']"
-        >
-            <ng-template pTemplate="caption">
-                <div class="p-d-flex">
-                    <button
-                        pButton
-                        label="Clear"
-                        class="p-button-outlined"
-                        icon="pi pi-filter-slash"
-                        (click)="refresh(tableRef)"
-                    ></button>
-                    <span class="p-input-icon-left float-right p-ml-auto">
-                        <i class="pi pi-search"></i>
-                        <input
-                            pInputText
-                            type="text"
-                            (input)="
-                                tableRef.filterGlobal(
-                                    $event.target.value,
-                                    'contains'
-                                )
-                            "
-                            placeholder="Search keyword"
-                        />
-                    </span>
-                </div>
-            </ng-template>
-
-            <ng-template pTemplate="header">
-                <tr>
-                    <th
-                        *ngFor="let col of cols"
-                        pResizableColumn
-                        [ngStyle]="col.style"
-                        [pSortableColumn]="
-                            col.sortField ? col.sortField : col.field
+        <ng-template pTemplate="caption">
+            <div class="p-d-flex">
+                <button
+                    pButton
+                    label="Clear"
+                    class="p-button-outlined"
+                    icon="pi pi-filter-slash"
+                    (click)="refresh(tableRef)"
+                ></button>
+                <span class="p-input-icon-left float-right p-ml-auto">
+                    <i class="pi pi-search"></i>
+                    <input
+                        pInputText
+                        type="text"
+                        (input)="
+                            tableRef.filterGlobal(
+                                $event.target.value,
+                                'contains'
+                            )
                         "
-                    >
-                        <div class="float-left">
-                            {{ col.header }}
-                        </div>
-                        <p-sortIcon
-                            *ngIf="!col.noScroll"
-                            class="float-left"
-                            [field]="col.sortField ? col.sortField : col.field"
-                        ></p-sortIcon>
+                        placeholder="Search keyword"
+                    />
+                </span>
+            </div>
+        </ng-template>
 
-                        <p-columnFilter
-                            *ngIf="col.filterType === FILTER_TYPE.TEXT"
-                            class="float-right"
-                            type="text"
-                            [field]="col.field"
-                            display="menu"
-                        ></p-columnFilter>
-
-                        <p-columnFilter
-                            *ngIf="col.filterType === FILTER_TYPE.BOOL"
-                            class="float-right"
-                            type="boolean"
-                            [field]="col.field"
-                        >
-                            Has Pics
-                        </p-columnFilter>
-                    </th>
-                </tr>
-            </ng-template>
-            <ng-template
-                pTemplate="body"
-                let-file
-            >
-                <tr
-                    [ngClass]="{
-                        'recently-opened': file.recentlyOpened,
-                    }"
+        <ng-template pTemplate="header">
+            <tr>
+                <th
+                    *ngFor="let col of cols"
+                    pResizableColumn
+                    [ngStyle]="col.style"
+                    [pSortableColumn]="
+                        col.sortField ? col.sortField : col.field
+                    "
                 >
-                    <td
-                        *ngFor="let col of cols"
-                        [ngClass]="col.cClass"
+                    <div class="float-left">
+                        {{ col.header }}
+                    </div>
+                    <p-sortIcon
+                        *ngIf="!col.noScroll"
+                        class="float-left"
+                        [field]="col.sortField ? col.sortField : col.field"
+                    ></p-sortIcon>
+
+                    <p-columnFilter
+                        *ngIf="col.filterType === FILTER_TYPE.TEXT"
+                        class="float-right"
+                        type="text"
+                        [field]="col.field"
+                        display="menu"
+                    ></p-columnFilter>
+
+                    <p-columnFilter
+                        *ngIf="col.filterType === FILTER_TYPE.BOOL"
+                        class="float-right"
+                        type="boolean"
+                        [field]="col.field"
                     >
-                        <span *ngIf="col.type === 'text'">
-                            {{ file[col.field] }}
-                        </span>
+                        Has Pics
+                    </p-columnFilter>
+                </th>
+            </tr>
+        </ng-template>
+        <ng-template
+            pTemplate="body"
+            let-file
+        >
+            <tr
+                [ngClass]="{
+                    'recently-opened': file.recentlyOpened,
+                }"
+            >
+                <td
+                    *ngFor="let col of cols"
+                    [ngClass]="col.cClass"
+                >
+                    <span *ngIf="col.type === 'text'">
+                        {{ file[col.field] }}
+                    </span>
 
-                        <div *ngIf="col.type === 'name'">
-                            <button
-                                type="button"
-                                pButton
-                                size="small"
-                                (click)="openFile(file)"
-                            >
-                                <span class="pr-3">🎁</span>
-                                <span>{{ file[col.field] }}</span>
-                            </button>
-                        </div>
-
-                        <div *ngIf="col.type === 'fileLocation'">
-                            <div class="float-left">
-                                <button
-                                    type="button"
-                                    pButton
-                                    size="small"
-                                    (click)="openFileLocation(file)"
-                                >
-                                    <span class="pr-3">📁</span>
-                                    <span>{{ file[col.field] }}</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div
-                            *ngIf="col.type === 'pictures'"
-                            class="small-pic"
-                            (click)="openPic(file)"
+                    <div *ngIf="col.type === 'name'">
+                        <p-button
+                            type="button"
+                            size="small"
+                            [outlined]="true"
+                            (click)="openFile(file)"
                         >
-                            <img
-                                *ngIf="file.hasPic"
-                                [src]="file.picUrl"
-                            />
+                            <span class="pr-3">🎁</span>
+                            <span>{{ file[col.field] }}</span>
+                        </p-button>
+                    </div>
+
+                    <div *ngIf="col.type === 'fileLocation'">
+                        <div class="float-left">
+                            <p-button
+                                type="button"
+                                size="small"
+                                [outlined]="true"
+                                (click)="openFileLocation(file)"
+                            >
+                                <span class="pr-3">📁</span>
+                                <span>{{ file[col.field] }}</span>
+                            </p-button>
                         </div>
-                    </td>
-                </tr>
-            </ng-template>
-        </p-table>
-    </div>
+                    </div>
+
+                    <div
+                        *ngIf="col.type === 'pictures'"
+                        class="small-pic"
+                        (click)="openPic(file)"
+                    >
+                        <img
+                            *ngIf="file.hasPic"
+                            [src]="file.picUrl"
+                        />
+                    </div>
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
 </div>
