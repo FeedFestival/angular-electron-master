@@ -7,29 +7,19 @@ import { DropdownModule } from 'primeng/dropdown';
 import { DialogService } from 'primeng/dynamicdialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
-import { EMPTY, Observable, Subject, from, of } from 'rxjs';
-import {
-    catchError,
-    concatAll,
-    concatMap,
-    delay,
-    distinct,
-    map,
-    switchMap,
-    takeUntil,
-    tap,
-} from 'rxjs/operators';
+import { Observable, Subject, from, of } from 'rxjs';
+import { filter, finalize, switchMap, tap } from 'rxjs/operators';
 import { AppService } from '../../app.service';
 import { ElectronService } from '../../core/services';
 import { SeeImageComponent } from '../../shared/components/see-image/see-image.component';
 import { LabelValue } from '../../shared/model';
-import { DriveFile, FileCheck, FilePathCheck, IFile, RawFile } from '../../shared/model/DriveFile';
-import { EXCLUDE_LIST, FILTER_TYPE, blenderFilesCols } from './blender-files.constants';
+import { defaultIFile, DriveFile, IFile } from '../../shared/model/DriveFile';
+import { FILTER_TYPE, blenderFilesCols } from './blender-files.constants';
 import { BLENDER_FILES_DRIVE_FILE, BlenderFilesService } from './blender-files.service';
+import { BlenderFinderAsync } from './blender-finder-async';
+import { BlenderFinder } from './blender-finder';
 
 const FORM_VALUE_KEY = 'blender-files-form-values';
-
-const FILE_FILTER = '.blend';
 
 @Component({
     selector: 'app-blender-files',
@@ -55,15 +45,11 @@ export class BlenderFilesComponent implements OnDestroy {
     @ViewChild('tableRef') tableRef: any;
 
     fg: FormGroup;
-
-    fileCount: number = 0;
-    checkedFiles: number = 0;
-    isChecking = false;
-    directories: any[];
-
-    drives: LabelValue<string>[] = [];
-    rawFiles: RawFile[] = [];
+    // blenderFinder = new BlenderFinderAsync('.blend');
+    blenderFinder = new BlenderFinder('.blend');
     files: IFile[] = [];
+    drives: LabelValue<string>[] = [];
+
     private destroyed$ = new Subject<void>();
 
     constructor(
@@ -91,7 +77,6 @@ export class BlenderFilesComponent implements OnDestroy {
             this.fg.patchValue(formValues);
         }
 
-        //
         this.fg.controls.drive.valueChanges
             .pipe(
                 switchMap(drive =>
@@ -106,9 +91,10 @@ export class BlenderFilesComponent implements OnDestroy {
             .subscribe(driveFile => {
                 console.log('driveFile: ', driveFile);
                 this.files = driveFile.files.map((f, i) => {
-                    return this.toFile(f, i);
+                    const file = BlenderFinderAsync.toFile(f, i);
+                    if (!file) return { ...f, ...defaultIFile, name: `DELETED ? ${f.name}` };
+                    return file;
                 });
-                this.fileCount = this.files.length;
             });
     }
 
@@ -174,156 +160,43 @@ export class BlenderFilesComponent implements OnDestroy {
     }
 
     stop(): void {
-        this.isChecking = false;
+        this.blenderFinder.isChecking = false;
     }
 
     findBlenderFiles(): void {
-        this.rawFiles = [];
         this.files = [];
-
         const rawValue = this.fg.getRawValue();
-        this.isChecking = true;
-        of(rawValue.drive)
-            .pipe(
-                switchMap(drive => this.readDirectory(`${drive}/`)),
-                concatAll(),
-                concatMap(fullPath => this.handleFileOrFolder(`${rawValue.drive}/${fullPath}`)),
-                tap(file => {
-                    if (!file) return;
 
-                    console.log('this.files[' + this.files.length + '] <- transformedFile: ', file);
+        this.blenderFinder
+            .findInDrive(`${rawValue.drive}/`)
+            .pipe(finalize(() => this.onSearchFinished()))
+            .subscribe(
+                files =>
+                    (this.files = files.map((f, i) => {
+                        return BlenderFinderAsync.toFile(f, i);
+                    })),
+            );
 
-                    this.files.push(file);
-                    this.fileCount = this.files.length;
-                }),
-            )
-            .subscribe(() => {
-                const driveFile: DriveFile = {
-                    lastCheckupDate: new Date().toISOString(),
-                    files: this.rawFiles,
-                };
-                this.saveDriveFile(driveFile);
-            });
-    }
-
-    private findAllDirectories(path: string): Observable<IFile> {
-        const isExcludedFromSearch = EXCLUDE_LIST.some(excluded => path.indexOf(excluded) >= 0);
-
-        if (isExcludedFromSearch) return of(undefined);
-
-        return from(this.readDirectory(path)).pipe(
-            takeUntil(this.destroyed$),
-            concatMap(filePaths => {
-                this.checkedFiles++;
-
-                if (!this.isChecking) return EMPTY;
-
-                return this.checkAndAddDirectory({ filePaths, startPath: path });
-            }),
-        );
-    }
-
-    private checkAndAddDirectory(filePathCheck: FilePathCheck): Observable<IFile> {
-        if (!filePathCheck?.filePaths) {
-            return of(undefined);
-        }
-
-        return from(filePathCheck.filePaths).pipe(
-            map(f => ElectronService.PATH.join(filePathCheck.startPath, f)),
-            distinct(),
-            concatMap(filepath => this.handleFileOrFolder(filepath)),
-        );
-    }
-
-    private handleFileOrFolder(filepath: string): Observable<IFile> {
-        console.log('filepath: ', filepath);
-        try {
-            var stat = ElectronService.FS.lstatSync(filepath);
-            if (stat.isDirectory()) {
-                return this.findAllDirectories(filepath);
-            } else if (filepath.indexOf(FILE_FILTER) >= 0) {
-                const { exists, skip, rawFile } = this.getRawFile(filepath);
-
-                if (exists || skip) return of(undefined);
-
-                return of(this.toFile(rawFile, this.fileCount));
-            }
-        } catch (e) {}
-        return of(undefined);
-    }
-
-    private getRawFile(filepath: string): { exists?: boolean; skip?: boolean; rawFile?: RawFile } {
-        const foldersTo = filepath.split('\\');
-        const name = foldersTo[foldersTo.length - 1];
-        const nameSplit = name.split('.');
-        const ext = nameSplit[nameSplit.length - 1];
-
-        const skip = ext !== 'blend';
-        if (skip) return { skip };
-
-        const exists = this.rawFiles.findIndex(f => f.name === name) >= 0;
-        if (exists) return { exists };
-
-        const rawFile: RawFile = {
-            name,
-            filepath,
-        };
-        this.rawFiles.push(rawFile);
-
-        return { rawFile };
-    }
-
-    private toFile(rawFile: RawFile, index: number): IFile {
-        const foldersTo = rawFile.filepath.split('\\');
-        const name = foldersTo[foldersTo.length - 1];
-        const fileLocation = rawFile.filepath.replace(name, '');
-        let picUrl = fileLocation + 'SEEME.PNG';
-        picUrl = picUrl.replace(/\\/g, '/');
-        picUrl = 'file://' + picUrl;
-
-        const stats = ElectronService.FS.statSync(rawFile.filepath);
-
-        const file: IFile = {
-            ...rawFile,
-            date: this.toDateString(stats.birthtime),
-            picUrl,
-            hasPic: false,
-            fileLocation,
-        };
-
-        // this.readHasPic(picUrl, index)
         //     .pipe(
-        //         tap(res => {
-        //             // console.log("hasPic$ . map -> res: ", res);
-        //             this.files[res.index].hasPic = res.hasPic;
+        //         filter(file => !!file),
+        //         tap(file => {
+        //             console.log('this.files[' + this.files.length + '] <- transformedFile: ', file);
+
+        //             this.files.push(file);
         //         }),
-        //         map(res => res.hasPic),
-        //         catchError(res => {
-        //             console.warn('err: ', res.err);
-        //             this.files[res.index].hasPic = res.hasPic;
-        //             return of(false);
-        //         }),
+        //         finalize(() => this.onSearchFinished()),
         //     )
         //     .subscribe();
-
-        return file;
     }
 
-    private readDirectory(path): Promise<string[]> {
-        return new Promise((resolve, reject) => {
-            try {
-                return ElectronService.FS.readdir(path, (err, filenames) => {
-                    if (err != null) {
-                        // reject(err);
-                        resolve([]);
-                    } else {
-                        resolve(filenames);
-                    }
-                });
-            } catch (e) {
-                resolve([]);
-            }
-        });
+    private onSearchFinished(): void {
+        this.blenderFinder.isChecking = false;
+
+        const driveFile: DriveFile = {
+            lastCheckupDate: new Date().toISOString(),
+            files: this.blenderFinder.rawFiles,
+        };
+        this.saveDriveFile(driveFile);
     }
 
     readHasPic(picUrl, index: number): Observable<{ hasPic: boolean; index: number; err?: any }> {
@@ -348,22 +221,6 @@ export class BlenderFilesComponent implements OnDestroy {
         this.files.forEach(f => (f.recentlyOpened = false));
         const index = this.files.findIndex(f => f.name === file.name);
         this.files[index].recentlyOpened = true;
-    }
-
-    private toDateString(date: Date) {
-        let dateString = 'yyyy-mm-dd';
-
-        dateString = dateString.replace('yyyy', this.pad(date.getFullYear(), 2).toString());
-        dateString = dateString.replace('mm', this.pad(date.getMonth(), 2).toString());
-        dateString = dateString.replace('dd', this.pad(date.getDate(), 2).toString());
-
-        return dateString;
-    }
-
-    private pad(n, width, z?) {
-        z = z || '0';
-        n = n + '';
-        return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
     }
 
     private unsubscribe() {

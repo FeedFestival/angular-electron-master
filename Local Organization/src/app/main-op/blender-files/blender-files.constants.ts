@@ -85,7 +85,6 @@ export const EXCLUDE_LIST = [
     'Program Files (x86)',
 
     'Riot Games',
-
     '_AI',
 
     'Users', // Should  we? First let's see if something in them

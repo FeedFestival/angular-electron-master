@@ -24,7 +24,7 @@
             Find Blender Files
         </p-button>
 
-        @if (isChecking) {
+        @if (blenderFinder.isChecking) {
             <p-button
                 type="button"
                 size="small"
@@ -46,21 +46,6 @@
             (click)="selectDirectory()"
         >
             Select Directory
-        </button>
-
-        <button
-            type="button"
-            pButton
-            size="small"
-            [outlined]="true"
-            severity="secondary"
-            [disabled]="false"
-            (click)="recheck()"
-        >
-            Recheck
-            <span *ngIf="checkedFiles > 0 || fileCount > 0">
-                {{ checkedFiles + ' - ' + fileCount }}
-            </span>
         </button>
     </div>
 </form>

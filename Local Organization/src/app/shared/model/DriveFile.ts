@@ -6,8 +6,8 @@ export interface RawFile {
 export interface IFile extends RawFile {
     fileLocation: string;
     date: string;
-    hasPic: boolean;
-    picUrl: string;
+    hasPic?: boolean;
+    picUrl?: string;
     //
     recentlyOpened?: boolean;
 }
@@ -24,5 +24,16 @@ export interface FilePathCheck {
 
 export interface FileCheck {
     filename: string;
-    // startPath: string;
 }
+
+export const getNameFromFilepath = (filepath: string): string => {
+    const foldersTo = filepath.split('\\');
+    return foldersTo[foldersTo.length - 1];
+};
+
+export const defaultIFile: IFile = {
+    name: '',
+    filepath: '',
+    fileLocation: 'string',
+    date: '',
+};
